@@ -1,0 +1,96 @@
+{
+  "address": "0x65C4817134570098236b191D4A926802B871c0a5",
+  "abi": [
+    {
+      "type": "event",
+      "anonymous": false,
+      "name": "EvidenceStored",
+      "inputs": [
+        {
+          "type": "string",
+          "name": "caseId",
+          "indexed": false
+        },
+        {
+          "type": "string",
+          "name": "fileHash",
+          "indexed": false
+        },
+        {
+          "type": "string",
+          "name": "cid",
+          "indexed": false
+        },
+        {
+          "type": "uint256",
+          "name": "timestamp",
+          "indexed": false
+        },
+        {
+          "type": "uint256",
+          "name": "blockNumber",
+          "indexed": false
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getEvidence",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "string",
+          "name": "_caseId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "tuple[]",
+          "name": "",
+          "components": [
+            {
+              "type": "string",
+              "name": "fileHash"
+            },
+            {
+              "type": "string",
+              "name": "cid"
+            },
+            {
+              "type": "uint256",
+              "name": "timestamp"
+            },
+            {
+              "type": "uint256",
+              "name": "blockNumber"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "storeEvidence",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "string",
+          "name": "_caseId"
+        },
+        {
+          "type": "string",
+          "name": "_fileHash"
+        },
+        {
+          "type": "string",
+          "name": "_cid"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "numDeployments": 1
+}

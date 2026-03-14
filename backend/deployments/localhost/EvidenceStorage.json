@@ -1,0 +1,58 @@
+{
+  "address": "0x8472A0c402454bfD44a7d732Eae7625E43Fca0dB",
+  "abi": [
+    {
+      "type": "function",
+      "name": "getEvidence",
+      "constant": true,
+      "stateMutability": "view",
+      "payable": false,
+      "inputs": [
+        {
+          "type": "string",
+          "name": "_caseId"
+        }
+      ],
+      "outputs": [
+        {
+          "type": "string",
+          "name": ""
+        },
+        {
+          "type": "string",
+          "name": ""
+        },
+        {
+          "type": "string",
+          "name": ""
+        },
+        {
+          "type": "uint256",
+          "name": ""
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "storeEvidence",
+      "constant": false,
+      "payable": false,
+      "inputs": [
+        {
+          "type": "string",
+          "name": "_caseId"
+        },
+        {
+          "type": "string",
+          "name": "_fileHash"
+        },
+        {
+          "type": "string",
+          "name": "_cid"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "numDeployments": 1
+}
