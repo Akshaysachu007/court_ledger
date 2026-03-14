@@ -1,0 +1,219 @@
+/* ============================================================
+   COURT LEDGER SYSTEM — Login
+   Theme: Refined Minimalism · Ivory & Deep Navy · Editorial
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap');
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #f7f5f0;
+  --surface: #ffffff;
+  --ink: #15130f;
+  --ink-muted: #6b6456;
+  --rule: #dcd8d0;
+  --accent: #1c2b4a;
+  --accent-warm: #8b6914;
+  --font-display: 'Cormorant Garamond', serif;
+  --font-ui: 'Jost', sans-serif;
+}
+
+/* ── Page centering ─────────────────────────────────────── */
+body {
+  min-height: 100vh;
+  background-color: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  padding: 2rem 1rem;
+}
+
+/* React root must also be a flex container to centre the card */
+#root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* ── Card ───────────────────────────────────────────────── */
+.login-card {
+  background: var(--surface);
+  width: 100%;
+  max-width: 420px;
+  padding: 3rem 3rem 2.5rem;
+  border-top: 3px solid var(--accent);
+  box-shadow: 0 2px 32px rgba(21, 19, 15, 0.08);
+  animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.login-header {
+  margin-bottom: 2.4rem;
+}
+
+.login-eyebrow {
+  font-family: var(--font-ui);
+  font-size: 0.67rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent-warm);
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.7rem;
+}
+
+.login-eyebrow::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+
+.login-title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 300;
+  color: var(--ink);
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+}
+
+.login-title strong {
+  font-weight: 600;
+}
+
+.login-sub {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--ink-muted);
+  margin-top: 0.4rem;
+}
+
+/* ── Form ───────────────────────────────────────────────── */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.form-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.7rem 0;
+  font-family: var(--font-ui);
+  font-size: 0.97rem;
+  font-weight: 300;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.form-input::placeholder {
+  color: #c5bfb4;
+  font-weight: 300;
+}
+
+.form-input:focus {
+  border-bottom-color: var(--accent);
+}
+
+/* ── Button ─────────────────────────────────────────────── */
+.login-btn {
+  margin-top: 0.5rem;
+  width: 100%;
+  padding: 0.85rem;
+  font-family: var(--font-ui);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.login-btn:hover {
+  background: #243761;
+  transform: translateY(-1px);
+}
+
+.login-btn:active {
+  transform: translateY(0);
+  background: var(--accent);
+}
+
+/* ── Footer ─────────────────────────────────────────────── */
+.login-footer {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+.login-footer a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+  margin-left: 0.25rem;
+  transition: color 0.2s;
+}
+
+.login-footer a:hover {
+  color: var(--accent-warm);
+}
+
+/* ── Animation ──────────────────────────────────────────── */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .login-card {
+    padding: 2.2rem 1.75rem 2rem;
+  }
+
+  .login-title {
+    font-size: 1.65rem;
+  }
+}
