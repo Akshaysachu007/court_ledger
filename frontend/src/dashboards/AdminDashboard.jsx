@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import "../styles/Register.css"; 
 
 function AdminDashboard() {
+  const strongPasswordRegex = /^(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
+
   // Data States
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +43,12 @@ function AdminDashboard() {
   // Form Submission (Create or Update)
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (formData.password && !strongPasswordRegex.test(formData.password)) {
+      alert("Password must contain at least one number and one special character.");
+      return;
+    }
+
     try {
       if (editingUserId) {
         await axios.put(`http://localhost:5000/api/auth/users/${editingUserId}`, formData, {
@@ -230,6 +238,9 @@ function AdminDashboard() {
                       onChange={(e) => setFormData({...formData, password: e.target.value})} 
                       required={!editingUserId} 
                     />
+                    <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '6px' }}>
+                      Must include at least one number and one special character.
+                    </small>
                   </div>
                   <div className="form-field">
                     <label className="form-label">Assigned Designation</label>

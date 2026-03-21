@@ -5,6 +5,11 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const { isAdmin } = require("../middleware/authMiddleware");
 
+const isStrongPassword = (password) => {
+  // Require at least one number and one special character.
+  return /^(?=.*\d)(?=.*[^A-Za-z0-9]).+$/.test(password);
+};
+
 // --- 1. LOGIN ---
 router.post("/login", async (req, res) => {
   try {
@@ -61,6 +66,12 @@ router.post("/create-user", isAdmin, async (req, res) => {
     const { name, email, password, role } = req.body;
     const emailNormalized = email.trim().toLowerCase();
 
+    if (!password || !isStrongPassword(password)) {
+      return res.status(400).json({
+        message: "Password must contain at least one number and one special character"
+      });
+    }
+
     if (role !== "clerk" && role !== "judge") {
       return res.status(400).json({ message: "Invalid role assignment" });
     }
@@ -91,6 +102,11 @@ router.put("/users/:id", isAdmin, async (req, res) => {
 
     // If a new password is provided, hash it
     if (password && password.trim() !== "") {
+      if (!isStrongPassword(password)) {
+        return res.status(400).json({
+          message: "Password must contain at least one number and one special character"
+        });
+      }
       updateData.password = await bcrypt.hash(password, 10);
     }
 

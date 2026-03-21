@@ -22,16 +22,20 @@ function JudgeDashboard() {
 
   // Data States
   const [cases, setCases] = useState([]);
+  const [pendingEvidenceRequests, setPendingEvidenceRequests] = useState([]);
   const [caseIntegrity, setCaseIntegrity] = useState({});
   const [tamperedEvidence, setTamperedEvidence] = useState([]);
   const [evidenceMap, setEvidenceMap] = useState({});
   const [blockchainDetails, setBlockchainDetails] = useState({});
+  const [selectedEvidenceRequest, setSelectedEvidenceRequest] = useState(null);
+  const [requestCaseEvidence, setRequestCaseEvidence] = useState([]);
 
   // UI States
-  const [activeTab, setActiveTab] = useState("new");
+  const [activeTab, setActiveTab] = useState("new-evidence");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCase, setSelectedCase] = useState(null);
   const [updatingCaseId, setUpdatingCaseId] = useState(null);
+  const [updatingEvidenceId, setUpdatingEvidenceId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const isPendingCase = (caseItem) => {
@@ -108,10 +112,23 @@ function JudgeDashboard() {
     }
   }, [judgeId]);
 
+  const fetchPendingEvidenceRequests = useCallback(async () => {
+    try {
+      const res = await axios.get(`http://localhost:5000/api/evidence/pending/judge/${judgeId}`);
+      setPendingEvidenceRequests(res.data || []);
+    } catch (error) {
+      console.error("Pending evidence load error:", error);
+      setPendingEvidenceRequests([]);
+    }
+  }, [judgeId]);
+
   useEffect(() => {
     if (!judgeId) navigate("/");
-    else fetchAssignedCases();
-  }, [judgeId, navigate, fetchAssignedCases]);
+    else {
+      fetchAssignedCases();
+      fetchPendingEvidenceRequests();
+    }
+  }, [judgeId, navigate, fetchAssignedCases, fetchPendingEvidenceRequests]);
 
   const updateCaseStatus = async (caseId, status) => {
     try {
@@ -127,6 +144,46 @@ function JudgeDashboard() {
     }
   };
 
+  const loadCaseEvidenceDetails = async (caseId) => {
+    try {
+      const res = await axios.get(`http://localhost:5000/api/evidence/case/${caseId}?includeAll=true`);
+      setRequestCaseEvidence(res.data || []);
+    } catch (error) {
+      console.error("Case evidence details load error:", error);
+      setRequestCaseEvidence([]);
+    }
+  };
+
+  const openEvidenceRequest = async (requestItem) => {
+    setSelectedEvidenceRequest(requestItem);
+    setSelectedCase(null);
+    await loadCaseEvidenceDetails(requestItem.caseId);
+  };
+
+  const updateEvidenceRequestStatus = async (evidenceId, status) => {
+    try {
+      setUpdatingEvidenceId(evidenceId);
+      const endpoint = status === "approved" ? "approve" : "reject";
+      await axios.put(`http://localhost:5000/api/evidence/${endpoint}/${evidenceId}`, {
+        judgeId,
+        reason: status === "rejected" ? "Rejected by judge" : undefined
+      });
+
+      await fetchPendingEvidenceRequests();
+      await fetchAssignedCases();
+      setSelectedEvidenceRequest(null);
+      setRequestCaseEvidence([]);
+    } catch (error) {
+      alert(error.response?.data?.error || "Error updating evidence request");
+    } finally {
+      setUpdatingEvidenceId(null);
+    }
+  };
+
+  const getPendingPreviewUrl = (evidenceId) => {
+    return `http://localhost:5000/api/evidence/preview/${evidenceId}?judgeId=${judgeId}`;
+  };
+
   const filteredCases = cases.filter((c) => {
     const matchesSearch = 
       c.caseNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -138,11 +195,24 @@ function JudgeDashboard() {
     return matchesSearch;
   });
 
+  const filteredEvidenceRequests = pendingEvidenceRequests.filter((item) => {
+    const caseDetails = item.caseDetails || {};
+    const matchesSearch =
+      (caseDetails.caseNumber || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (caseDetails.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.fileName || "").toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  });
+
   return (
     <div className="dashboard-layout">
       <aside className="sidebar">
         <div className="sidebar-logo">LegalChain</div>
         <nav>
+          <button className={`nav-btn ${activeTab === "new-evidence" ? "active" : ""}`} onClick={() => setActiveTab("new-evidence")}>
+            <Inbox size={18} /> New Evidence
+            {pendingEvidenceRequests.length > 0 && <span className="alert-badge">{pendingEvidenceRequests.length}</span>}
+          </button>
           <button className={`nav-btn ${activeTab === "all" ? "active" : ""}`} onClick={() => setActiveTab("all")}>
             <Database size={18} /> All Cases
           </button>
@@ -186,62 +256,216 @@ function JudgeDashboard() {
           {loading ? (
             <div className="loading-state">Synchronizing with Blockchain...</div>
           ) : (
-            <div className="table-wrapper animate-fade">
-              <table className="cases-table">
+            <>
+              {activeTab === "new-evidence" ? (
+                <div className="table-wrapper animate-fade">
+                  <table className="cases-table">
+                    <thead>
+                      <tr>
+                        <th>Case ID</th>
+                        <th>Case Title</th>
+                        <th>Evidence File</th>
+                        <th>Requested At</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredEvidenceRequests.length === 0 ? (
+                        <tr>
+                          <td colSpan="5">No pending evidence requests.</td>
+                        </tr>
+                      ) : (
+                        filteredEvidenceRequests.map((item) => (
+                          <tr key={item._id}>
+                            <td className="case-number">{item.caseDetails?.caseNumber || "N/A"}</td>
+                            <td>{item.caseDetails?.title || "N/A"}</td>
+                            <td>{item.fileName}</td>
+                            <td>{new Date(item.uploadedAt).toLocaleString()}</td>
+                            <td>
+                              <button className="view-btn" onClick={() => openEvidenceRequest(item)}>
+                                Review Evidence
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="table-wrapper animate-fade">
+                  <table className="cases-table">
+                    <thead>
+                      <tr>
+                        <th>Case ID</th>
+                        <th>Subject</th>
+                        <th>Status</th>
+                        <th>Integrity</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredCases.length === 0 ? (
+                        <tr>
+                          <td colSpan="5">No cases available in this section.</td>
+                        </tr>
+                      ) : (
+                        filteredCases.map((c) => (
+                          <tr key={c._id}>
+                            <td className="case-number">{c.caseNumber}</td>
+                            <td>{c.title}</td>
+                            <td><span className={`status-badge ${c.status}`}>{c.status}</span></td>
+                            <td>
+                              <span
+                                className={
+                                  caseIntegrity[c._id]?.status === "verified"
+                                    ? "status-valid"
+                                    : caseIntegrity[c._id]?.status === "no-evidence"
+                                      ? "status-no-evidence"
+                                      : "status-tampered"
+                                }
+                              >
+                                {caseIntegrity[c._id]?.status === "verified" ? (
+                                  <ShieldCheck size={14} />
+                                ) : caseIntegrity[c._id]?.status === "no-evidence" ? (
+                                  <FileText size={14} />
+                                ) : (
+                                  <AlertTriangle size={14} />
+                                )}
+                                {caseIntegrity[c._id]?.status === "verified"
+                                  ? " Verified"
+                                  : caseIntegrity[c._id]?.status === "no-evidence"
+                                    ? " No Evidence Available"
+                                    : " Tampered"}
+                              </span>
+                            </td>
+                            <td>
+                              <button className="view-btn" onClick={() => { setSelectedEvidenceRequest(null); setSelectedCase(c); }}>
+                                {isPendingCase(c) ? "View Details" : "View Case"}
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+
+          {selectedEvidenceRequest && (
+            <div className="evidence-panel animate-slide-up">
+              <div className="panel-header">
+                <h3><FileText size={20} /> New Evidence Review</h3>
+                <button className="close-btn" onClick={() => setSelectedEvidenceRequest(null)}>&times;</button>
+              </div>
+
+              <div className="blockchain-receipt-detailed">
+                <div className="receipt-header">Case Details</div>
+                <div className="receipt-grid-ext" style={{ flexWrap: "wrap", gap: "1.5rem" }}>
+                  <div className="r-item">
+                    <span className="r-label">Case Number</span>
+                    <span className="r-value">{selectedEvidenceRequest.caseDetails?.caseNumber || "N/A"}</span>
+                  </div>
+                  <div className="r-item">
+                    <span className="r-label">Case Title</span>
+                    <span className="r-value">{selectedEvidenceRequest.caseDetails?.title || "N/A"}</span>
+                  </div>
+                  <div className="r-item">
+                    <span className="r-label">Case Status</span>
+                    <span className="r-value">{selectedEvidenceRequest.caseDetails?.status || "N/A"}</span>
+                  </div>
+                  <div className="r-item" style={{ width: "100%" }}>
+                    <span className="r-label">Description</span>
+                    <span className="r-value">{selectedEvidenceRequest.caseDetails?.description || "No description"}</span>
+                  </div>
+                </div>
+              </div>
+
+              <h4>Evidence Request Details</h4>
+              <table className="evidence-table">
                 <thead>
                   <tr>
-                    <th>Case ID</th>
-                    <th>Subject</th>
+                    <th>File Name</th>
+                    <th>Clerk Description</th>
+                    <th>Type</th>
+                    <th>Size (KB)</th>
+                    <th>Requested At</th>
+                    <th>Preview</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{selectedEvidenceRequest.fileName}</td>
+                    <td>{selectedEvidenceRequest.description || "No description"}</td>
+                    <td>{selectedEvidenceRequest.mimeType || "N/A"}</td>
+                    <td>{selectedEvidenceRequest.fileSize ? (selectedEvidenceRequest.fileSize / 1024).toFixed(2) : "N/A"}</td>
+                    <td>{new Date(selectedEvidenceRequest.uploadedAt).toLocaleString()}</td>
+                    <td>
+                      <a
+                        href={getPendingPreviewUrl(selectedEvidenceRequest._id)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="icon-link"
+                      >
+                        <ExternalLink size={16} />
+                      </a>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <h4 style={{ marginTop: "1.5rem" }}>All Evidence For This Case</h4>
+              <table className="evidence-table">
+                <thead>
+                  <tr>
+                    <th>File Name</th>
                     <th>Status</th>
-                    <th>Integrity</th>
                     <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredCases.length === 0 ? (
-                    <tr>
-                      <td colSpan="5">No cases available in this section.</td>
-                    </tr>
-                  ) : (
-                    filteredCases.map((c) => (
-                      <tr key={c._id}>
-                        <td className="case-number">{c.caseNumber}</td>
-                        <td>{c.title}</td>
-                        <td><span className={`status-badge ${c.status}`}>{c.status}</span></td>
+                  {requestCaseEvidence.length > 0 ? (
+                    requestCaseEvidence.map((e) => (
+                      <tr key={e._id}>
+                        <td>{e.fileName}</td>
+                        <td>{e.status || "approved"}</td>
                         <td>
-                          <span
-                            className={
-                              caseIntegrity[c._id]?.status === "verified"
-                                ? "status-valid"
-                                : caseIntegrity[c._id]?.status === "no-evidence"
-                                  ? "status-no-evidence"
-                                  : "status-tampered"
-                            }
-                          >
-                            {caseIntegrity[c._id]?.status === "verified" ? (
-                              <ShieldCheck size={14} />
-                            ) : caseIntegrity[c._id]?.status === "no-evidence" ? (
-                              <FileText size={14} />
-                            ) : (
-                              <AlertTriangle size={14} />
-                            )}
-                            {caseIntegrity[c._id]?.status === "verified"
-                              ? " Verified"
-                              : caseIntegrity[c._id]?.status === "no-evidence"
-                                ? " No Evidence Available"
-                                : " Tampered"}
-                          </span>
-                        </td>
-                        <td>
-                          <button className="view-btn" onClick={() => setSelectedCase(c)}>
-                            {isPendingCase(c) ? "View Details" : "View Case"}
-                          </button>
+                          {e.ipfsHash ? (
+                            <a href={`https://gateway.pinata.cloud/ipfs/${e.ipfsHash}`} target="_blank" rel="noreferrer" className="icon-link">
+                              <ExternalLink size={16} />
+                            </a>
+                          ) : (
+                            <span>Pending</span>
+                          )}
                         </td>
                       </tr>
                     ))
+                  ) : (
+                    <tr>
+                      <td colSpan="3">No evidence records found for this case.</td>
+                    </tr>
                   )}
                 </tbody>
               </table>
+
+              <div className="modal-actions">
+                <button
+                  className="approve-btn"
+                  disabled={updatingEvidenceId === selectedEvidenceRequest._id}
+                  onClick={() => updateEvidenceRequestStatus(selectedEvidenceRequest._id, "approved")}
+                >
+                  {updatingEvidenceId === selectedEvidenceRequest._id ? "Processing..." : "Approve And Upload"}
+                </button>
+                <button
+                  className="reject-btn"
+                  disabled={updatingEvidenceId === selectedEvidenceRequest._id}
+                  onClick={() => updateEvidenceRequestStatus(selectedEvidenceRequest._id, "rejected")}
+                >
+                  Reject Evidence
+                </button>
+              </div>
             </div>
           )}
 

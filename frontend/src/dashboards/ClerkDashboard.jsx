@@ -17,6 +17,8 @@ function ClerkDashboard() {
   const [assignedJudge, setAssignedJudge] = useState("");
   const [selectedCase,  setSelectedCase]  = useState(null);
   const [evidenceList,  setEvidenceList]  = useState([]);
+  const [evidenceRequests, setEvidenceRequests] = useState([]);
+  const [evidenceDescriptions, setEvidenceDescriptions] = useState({});
   const [uploadingId,   setUploadingId]   = useState(null);
 
   /* ── Fetch Cases ── */
@@ -36,10 +38,22 @@ function ClerkDashboard() {
     } catch (err) { console.error(err); }
   }, []);
 
+  /* ── Fetch Clerk Evidence Requests ── */
+  const fetchEvidenceRequests = useCallback(async () => {
+    if (!clerkId) return;
+    try {
+      const res = await axios.get(`http://localhost:5000/api/evidence/requests/clerk/${clerkId}`);
+      setEvidenceRequests(res.data || []);
+    } catch (err) {
+      console.error(err);
+      setEvidenceRequests([]);
+    }
+  }, [clerkId]);
+
   useEffect(() => {
     if (!clerkId) navigate("/");
-    else { fetchCases(); fetchJudges(); }
-  }, [clerkId, navigate, fetchCases, fetchJudges]);
+    else { fetchCases(); fetchJudges(); fetchEvidenceRequests(); }
+  }, [clerkId, navigate, fetchCases, fetchJudges, fetchEvidenceRequests]);
 
   /* ── Create Case ── */
   const createCase = async (e) => {
@@ -51,6 +65,7 @@ function ClerkDashboard() {
       alert("Case created");
       setCaseNumber(""); setTitle(""); setDescription(""); setAssignedJudge("");
       fetchCases();
+      fetchEvidenceRequests();
       setView("cases");
     } catch { alert("Error creating case"); }
   };
@@ -68,16 +83,29 @@ function ClerkDashboard() {
   const handleUpload = async (e, caseId) => {
     const file = e.target.files[0];
     if (!file) return;
+    const evidenceDescription = (evidenceDescriptions[caseId] || "").trim();
+
+    if (!evidenceDescription) {
+      alert("Please add evidence description before upload.");
+      e.target.value = null;
+      return;
+    }
+
     const formData = new FormData();
     formData.append("file", file);
     formData.append("caseId", caseId);
     formData.append("uploadedBy", clerkId);
+    formData.append("description", evidenceDescription);
     try {
       setUploadingId(caseId);
       await axios.post("http://localhost:5000/api/evidence/upload", formData);
-      alert("Evidence uploaded successfully");
+      alert("Evidence request submitted. Awaiting judge approval.");
+      setEvidenceDescriptions((prev) => ({ ...prev, [caseId]: "" }));
+      fetchEvidenceRequests();
       if (selectedCase === caseId) viewEvidence(caseId);
-    } catch { alert("Upload failed"); }
+    } catch (error) {
+      alert(error.response?.data?.error || "Evidence request failed");
+    }
     finally { setUploadingId(null); e.target.value = null; }
   };
 
@@ -114,6 +142,13 @@ function ClerkDashboard() {
           onClick={() => setView("create")}
         >
           Create Case
+        </button>
+
+        <button
+          className={view === "requests" ? "active" : ""}
+          onClick={() => setView("requests")}
+        >
+          Evidence Requests
         </button>
 
       </aside>
@@ -217,7 +252,7 @@ function ClerkDashboard() {
                       <th>Case No.</th>
                       <th>Title</th>
                       <th>Status</th>
-                      <th>Evidence Upload</th>
+                      <th>Evidence Request</th>
                       <th>Files</th>
                     </tr>
                   </thead>
@@ -245,9 +280,17 @@ function ClerkDashboard() {
                           <td>
                             {c.status === "approved" ? (
                               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                                {uploadingId === c._id && (
-                                  <span className="uploading-tag">Uploading…</span>
-                                )}
+                                {uploadingId === c._id && <span className="uploading-tag">Submitting...</span>}
+                                <textarea
+                                  className="evidence-note-input"
+                                  placeholder="Add evidence description for judge review"
+                                  value={evidenceDescriptions[c._id] || ""}
+                                  onChange={(evt) => setEvidenceDescriptions((prev) => ({
+                                    ...prev,
+                                    [c._id]: evt.target.value
+                                  }))}
+                                  disabled={uploadingId === c._id}
+                                />
                                 <input
                                   type="file"
                                   disabled={uploadingId === c._id}
@@ -324,6 +367,64 @@ function ClerkDashboard() {
                 </div>
               )}
 
+            </>
+          )}
+
+          {/* ════ EVIDENCE REQUESTS VIEW ════ */}
+          {view === "requests" && (
+            <>
+              <div className="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Case No.</th>
+                      <th>Case Title</th>
+                      <th>File</th>
+                      <th>Description</th>
+                      <th>Status</th>
+                      <th>Submitted At</th>
+                      <th>Blockchain</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {evidenceRequests.length === 0 ? (
+                      <tr>
+                        <td colSpan="7">No evidence requests submitted yet.</td>
+                      </tr>
+                    ) : (
+                      evidenceRequests.map((reqItem) => (
+                        <tr key={reqItem._id}>
+                          <td>{reqItem.caseDetails?.caseNumber || "N/A"}</td>
+                          <td>{reqItem.caseDetails?.title || "N/A"}</td>
+                          <td>{reqItem.fileName}</td>
+                          <td>{reqItem.description || "No description"}</td>
+                          <td>
+                            <span className={`status-pill ${reqItem.status}`}>
+                              {reqItem.status}
+                            </span>
+                          </td>
+                          <td>{new Date(reqItem.uploadedAt).toLocaleString()}</td>
+                          <td>
+                            {reqItem.status === "approved" && reqItem.ipfsHash ? (
+                              <a
+                                href={`https://gateway.pinata.cloud/ipfs/${reqItem.ipfsHash}`}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                View
+                              </a>
+                            ) : reqItem.status === "rejected" ? (
+                              <span>{reqItem.rejectionReason || "Rejected"}</span>
+                            ) : (
+                              <span className="upload-waiting">Awaiting Judge Approval</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </>
           )}
 

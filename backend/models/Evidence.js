@@ -12,16 +12,35 @@ const EvidenceSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  fileSize: {
+    type: Number
+  },
+  mimeType: {
+    type: String
+  },
+  description: {
+    type: String,
+    default: ""
+  },
   fileHash: {
     type: String,
-    required: true
+    default: ""
   },
   ipfsHash: {
     type: String,
-    required: true
+    default: ""
   },
   blockchainTx: {
     type: String
+  },
+  tempFilePath: {
+    type: String
+  },
+  status: {
+    type: String,
+    enum: ["pending_approval", "approved", "rejected"],
+    default: "pending_approval",
+    index: true
   },
   uploadedBy: {
     // Keeping this as String as per your requirement, 
@@ -32,6 +51,24 @@ const EvidenceSchema = new mongoose.Schema({
   uploadedAt: {
     type: Date,
     default: Date.now
+  },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  },
+  approvedAt: {
+    type: Date
+  },
+  rejectedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  },
+  rejectedAt: {
+    type: Date
+  },
+  rejectionReason: {
+    type: String,
+    default: ""
   }
 });
 
