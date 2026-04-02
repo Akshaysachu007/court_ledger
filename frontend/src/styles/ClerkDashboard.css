@@ -307,3 +307,37 @@ td {
   50% { opacity: 0.5; }
   100% { opacity: 1; }
 }
+
+.password-card {
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 560px;
+}
+
+.password-card h2 {
+  margin: 0 0 0.5rem;
+  color: var(--text-primary);
+}
+
+.password-help {
+  margin: 0 0 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  max-width: 100%;
+}
+
+.password-form button {
+  align-self: flex-start;
+}

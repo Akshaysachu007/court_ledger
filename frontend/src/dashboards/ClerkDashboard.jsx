@@ -20,6 +20,10 @@ function ClerkDashboard() {
   const [evidenceRequests, setEvidenceRequests] = useState([]);
   const [evidenceDescriptions, setEvidenceDescriptions] = useState({});
   const [uploadingId,   setUploadingId]   = useState(null);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   /* ── Fetch Cases ── */
   const fetchCases = useCallback(async () => {
@@ -120,6 +124,38 @@ function ClerkDashboard() {
     <span className={`status-pill ${status}`}>{status}</span>
   );
 
+  const handlePasswordUpdate = async (e) => {
+    e.preventDefault();
+
+    if (newPassword !== confirmPassword) {
+      alert("New password and confirm password do not match.");
+      return;
+    }
+
+    try {
+      setPasswordLoading(true);
+      await axios.put(
+        "http://localhost:5000/api/auth/change-password",
+        { currentPassword, newPassword },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        }
+      );
+
+      alert("Password updated successfully.");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setView("cases");
+    } catch (error) {
+      alert(error.response?.data?.message || "Could not update password");
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   return (
     <div className="dashboard-layout">
 
@@ -149,6 +185,13 @@ function ClerkDashboard() {
           onClick={() => setView("requests")}
         >
           Evidence Requests
+        </button>
+
+        <button
+          className={view === "password" ? "active" : ""}
+          onClick={() => setView("password")}
+        >
+          Change Password
         </button>
 
       </aside>
@@ -426,6 +469,41 @@ function ClerkDashboard() {
                 </table>
               </div>
             </>
+          )}
+
+          {view === "password" && (
+            <div className="password-card">
+              <h2>Update Your Password</h2>
+              <p className="password-help">
+                Password must include at least one number and one special character.
+              </p>
+              <form className="password-form" onSubmit={handlePasswordUpdate}>
+                <input
+                  type="password"
+                  placeholder="Current password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  required
+                />
+                <input
+                  type="password"
+                  placeholder="New password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                />
+                <input
+                  type="password"
+                  placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+                <button type="submit" disabled={passwordLoading}>
+                  {passwordLoading ? "Updating..." : "Update Password"}
+                </button>
+              </form>
+            </div>
           )}
 
         </main>

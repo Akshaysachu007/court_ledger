@@ -12,7 +12,8 @@ import {
   ExternalLink,
   LogOut,
   Inbox,
-  Activity
+  Activity,
+  KeyRound
 } from "lucide-react";
 import "../styles/JudgeDashboard.css";
 
@@ -37,6 +38,10 @@ function JudgeDashboard() {
   const [updatingCaseId, setUpdatingCaseId] = useState(null);
   const [updatingEvidenceId, setUpdatingEvidenceId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   const isPendingCase = (caseItem) => {
     if (!caseItem) return false;
@@ -184,6 +189,38 @@ function JudgeDashboard() {
     return `http://localhost:5000/api/evidence/preview/${evidenceId}?judgeId=${judgeId}`;
   };
 
+  const handlePasswordUpdate = async (e) => {
+    e.preventDefault();
+
+    if (newPassword !== confirmPassword) {
+      alert("New password and confirm password do not match.");
+      return;
+    }
+
+    try {
+      setPasswordLoading(true);
+      await axios.put(
+        "http://localhost:5000/api/auth/change-password",
+        { currentPassword, newPassword },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        }
+      );
+
+      alert("Password updated successfully.");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setActiveTab("all");
+    } catch (error) {
+      alert(error.response?.data?.message || "Could not update password");
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   const filteredCases = cases.filter((c) => {
     const matchesSearch = 
       c.caseNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -226,6 +263,9 @@ function JudgeDashboard() {
               {tamperedEvidence.length > 0 && <span className="alert-badge">{tamperedEvidence.length}</span>}
             </div>
           </button>
+          <button className={`nav-btn ${activeTab === "password" ? "active" : ""}`} onClick={() => setActiveTab("password")}>
+            <KeyRound size={18} /> Change Password
+          </button>
         </nav>
       </aside>
 
@@ -257,7 +297,40 @@ function JudgeDashboard() {
             <div className="loading-state">Synchronizing with Blockchain...</div>
           ) : (
             <>
-              {activeTab === "new-evidence" ? (
+              {activeTab === "password" ? (
+                <div className="password-card animate-fade">
+                  <h3>Update Your Password</h3>
+                  <p className="password-help">
+                    Password must include at least one number and one special character.
+                  </p>
+                  <form className="password-form" onSubmit={handlePasswordUpdate}>
+                    <input
+                      type="password"
+                      placeholder="Current password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      required
+                    />
+                    <input
+                      type="password"
+                      placeholder="New password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required
+                    />
+                    <input
+                      type="password"
+                      placeholder="Confirm new password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                    />
+                    <button type="submit" className="approve-btn" disabled={passwordLoading}>
+                      {passwordLoading ? "Updating..." : "Update Password"}
+                    </button>
+                  </form>
+                </div>
+              ) : activeTab === "new-evidence" ? (
                 <div className="table-wrapper animate-fade">
                   <table className="cases-table">
                     <thead>

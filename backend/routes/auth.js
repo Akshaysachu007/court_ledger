@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const { isAdmin } = require("../middleware/authMiddleware");
+const { authenticateToken, isAdmin } = require("../middleware/authMiddleware");
 
 const isStrongPassword = (password) => {
   // Require at least one number and one special character.
@@ -131,6 +131,52 @@ router.delete("/users/:id", isAdmin, async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     res.json({ message: "User access revoked successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- 6. SELF PASSWORD UPDATE (CLERK/JUDGE) ---
+router.put("/change-password", authenticateToken, async (req, res) => {
+  try {
+    if (!["clerk", "judge"].includes(req.user.role)) {
+      return res.status(403).json({
+        message: "Access denied. Clerks and judges only."
+      });
+    }
+
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        message: "Current password and new password are required"
+      });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        message: "New password must be different from current password"
+      });
+    }
+
+    if (!isStrongPassword(newPassword)) {
+      return res.status(400).json({
+        message: "Password must contain at least one number and one special character"
+      });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const isCurrentMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentMatch) {
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    res.json({ message: "Password updated successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
